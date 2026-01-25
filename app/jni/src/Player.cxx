@@ -9,7 +9,7 @@
 //#include "extern/audio/bass_fx.h"
 
 #include <iostream>
-
+#include <cstdlib>
 
 //#define NON_ANDROID // Temporary defined in here
 //#define DEV_TEST // Use this for development purposes only
@@ -33,7 +33,7 @@
 
 
 
-
+unsigned int *TrackColor;
 NVmidiFile M;
 NVsequencer S;
 NVi::u32_t nowtick;
@@ -44,9 +44,62 @@ int eventCount = 0;
 
 
 //ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+void HSVtoRGB(int H, int s, int V, int &R, int &G, int &B )
+{
+    double dH = H / 60.0, dS = s / 100.0, dV = V / 100.0;
+    double C = dV * dS;
+    double m = dV - C;
 
+    double dR1 = 0.0, dG1 = 0.0, dB1 = 0.0;
+    if ( dH >= 0 && dH < 1.0 )
+    {
+        dR1 = C;
+        dG1 = C * dH;
+        dB1 = 0;
+    }
+    if ( dH >= 1 && dH < 2.0 )
+    {
+        dR1 = C * ( 2.0 - dH );
+        dG1 = C;
+        dB1 = 0;
+    }
+    if ( dH >= 2 && dH < 3.0 )
+    {
+        dR1 = 0;
+        dG1 = C;
+        dB1 = C * ( dH - 2.0 );
+    }
+    if ( dH >= 3 && dH < 4.0 )
+    {
+        dR1 = 0;
+        dG1 = C * ( 4.0 - dH );
+        dB1 = C;
+    }
+    if ( dH >= 4 && dH < 5.0 )
+    {
+        dR1 = C * ( dH - 4.0 );
+        dG1 = 0;
+        dB1 = C;
+    }
+    if ( dH >= 5 && dH < 6.0 )
+    {
+        dR1 = C;
+        dG1 = 0;
+        dB1 = C * ( 6.0 - dH );
+    }
 
-static constexpr unsigned int Col[]= {
+    R = static_cast< int >( ( dR1 + m ) * 255.0 + 0.5 );
+    G = static_cast< int >( ( dG1 + m ) * 255.0 + 0.5 );
+    B = static_cast< int >( ( dB1 + m ) * 255.0 + 0.5 );
+}
+unsigned int RandColor()
+{
+    int R, G, B;
+    HSVtoRGB( rand() % 360, rand() % 40 + 60, rand() % 20 + 80, R, G, B );
+    return 0xFF000000 | ( B << 16 ) | ( G << 8 ) | R;
+}
+
+static constexpr unsigned int initCol[]= {
   0xFFFF33CC,
   0xFF4EFF33,
   0xFF9933FF,
@@ -128,7 +181,7 @@ double Tplay = 0.0, Tscr;
 
 static void DrawNote(NVi::u16_t k, const NVnote &n, int pps)
 {
-    unsigned int c = Col[(n.track%16+n.chn)%16];
+    unsigned int c = TrackColor[n.track];
     int key = KeyMap[k], y_1;
     int y_0 = floor(_WinH - (n.Tstart - Tplay) * pps+0.5f);
 
@@ -240,6 +293,7 @@ void NVi::Quit()
     //ImGui_ImplSDL3_Shutdown();
     //ImGui::DestroyContext();
     delete Win;
+    free(TrackColor);
     BASS_Free();
     BASS_PluginFree(0);
     MIDI.destroy_all();
@@ -513,7 +567,12 @@ int SDL_main(int ac, char **av)
     
     // No more errape
     BASS_ChannelSetAttribute(Stm, BASS_ATTRIB_MIDI_VOICES, parsed_config.bass_voice_count);
-
+    TrackColor = (unsigned int *) malloc(MIDI.M.tracks*sizeof(unsigned int));
+    //_WinH = Win->WinH - Win->WinW * 80 / 1000; Tscr = (double)_WinH / live_note_speed;
+    for(int i=0;i<MIDI.M.tracks;++i){
+        if(i<16)TrackColor[i]=initCol[i];
+        else TrackColor[i]=RandColor();
+    }
 
     
     BASS_MIDI_StreamSetFilter(Stm, 0, reinterpret_cast<BOOL (*)(HSTREAM, int, BASS_MIDI_EVENT *, BOOL, void *)>(filter), nullptr);
