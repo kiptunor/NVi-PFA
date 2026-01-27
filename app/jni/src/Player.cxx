@@ -181,7 +181,7 @@ double Tplay = 0.0, Tscr;
 
 static void DrawNote(NVi::u16_t k, const NVnote &n, int pps)
 {
-    unsigned int c = TrackColor[n.track];
+    unsigned int c = TrackColor[n.track+n.chn];
     int key = KeyMap[k], y_1;
     int y_0 = floor(_WinH - (n.Tstart - Tplay) * pps+0.5f);
 
@@ -567,9 +567,9 @@ int SDL_main(int ac, char **av)
     
     // No more errape
     BASS_ChannelSetAttribute(Stm, BASS_ATTRIB_MIDI_VOICES, parsed_config.bass_voice_count);
-    TrackColor = (unsigned int *) malloc(MIDI.M.tracks*sizeof(unsigned int));
+    TrackColor = (unsigned int *) malloc((MIDI.M.tracks+16)*sizeof(unsigned int));
     //_WinH = Win->WinH - Win->WinW * 80 / 1000; Tscr = (double)_WinH / live_note_speed;
-    for(int i=0;i<MIDI.M.tracks;++i){
+    for(int i=0;i<MIDI.M.tracks+16;++i){
         if(i<16)TrackColor[i]=initCol[i];
         else TrackColor[i]=RandColor();
     }
